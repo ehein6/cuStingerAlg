@@ -1,6 +1,6 @@
 [submodule "externals/cuStinger"]
 	path = externals/cuStinger
-	url = https://github.com/cuStinger/cuStinger.git
+	url = ../cuStinger.git
 [submodule "externals/cub"]
 	path = externals/cub
 	url = https://github.com/NVlabs/cub.git
