@@ -15,27 +15,46 @@
 
 #include "static_katz_centrality/katz.cuh"
 
-class cuStinger_wrapper : public DynoGraph::DynamicGraph
+// RAII wrapper for cuStinger
+struct cuStinger_wrapper
 {
-private:
-    cuStinger graph;
-
-    // Algorithms
-    cuStingerAlgs::bfsBU bfs;
-    cuStingerAlgs::ccConcurrentLB cc;
-    cuStingerAlgs::StaticPageRank pagerank;
-
     // Store initial CSR graph
     std::vector<length_t> off;
     std::vector<vertexId_t> adj;
 
-    void init_algs();
-    void free_algs();
+    // The cuStinger graph object
+    cuStinger graph;
+
+    cuStinger_wrapper(size_t max_nv);
+    ~cuStinger_wrapper();
+};
+
+struct cuStingerAlgs_wrapper
+{
+    // Stores betweenness centrality results
+    std::vector<float> bc_values;
+    // Algorithms
+    cuStingerAlgs::StaticBC bc;
+    cuStingerAlgs::bfsBU bfs;
+    cuStingerAlgs::ccConcurrentLB cc;
+    cuStingerAlgs::StaticPageRank pagerank;
+    cuStingerAlgs_wrapper(cuStinger& graph);
+    ~cuStingerAlgs_wrapper();
+};
+
+class cuStinger_implementation : public DynoGraph::DynamicGraph
+{
+private:
+    // RAII wrapper for cuStinger
+    cuStinger_wrapper graph_wrapper;
+    // Handy reference to the actual graph
+    cuStinger & graph;
+    // RAII wrapper for cuStinger algorithms
+    cuStingerAlgs_wrapper algs;
 
 public:
-    cuStinger_wrapper(const DynoGraph::Args& args, int64_t max_nv);
-    cuStinger_wrapper(const DynoGraph::Args &args, int64_t max_vertex_id, const DynoGraph::Batch &batch);
-    ~cuStinger_wrapper();
+    cuStinger_implementation(const DynoGraph::Args& args, int64_t max_nv);
+    cuStinger_implementation(const DynoGraph::Args &args, int64_t max_vertex_id, const DynoGraph::Batch &batch);
 
     static std::vector<std::string> get_supported_algs();
     void before_batch(const DynoGraph::Batch& batch, const int64_t threshold);

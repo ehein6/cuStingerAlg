@@ -3,6 +3,6 @@
 
 int main(int argc, char** argv)
 {
-    DynoGraph::Benchmark::run<cuStinger_wrapper>(argc, argv);
+    DynoGraph::Benchmark::run<cuStinger_implementation>(argc, argv);
     return 0;
 }

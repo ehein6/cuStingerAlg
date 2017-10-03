@@ -15,14 +15,16 @@
 
 using namespace cuStingerAlgs;
 
-cuStinger_wrapper::cuStinger_wrapper(const DynoGraph::Args& args, int64_t max_vertex_id)
-: DynoGraph::DynamicGraph(args, max_vertex_id)
-, off(max_vertex_id + 1)
+// Implementation of cuStinger_wrapper
+
+cuStinger_wrapper::cuStinger_wrapper(size_t max_nv)
+// Initialize host CSR dummy graph
+: off(max_nv)
 , adj(1)
 {
     cuStingerInitConfig config;
     config.initState = eInitStateCSR;
-    config.maxNV = max_vertex_id + 1;
+    config.maxNV = max_nv;
 
     // HACK
     // cuStinger only knows how to initialize using a CSR right now, so we'll give it a tiny one
@@ -40,51 +42,67 @@ cuStinger_wrapper::cuStinger_wrapper(const DynoGraph::Args& args, int64_t max_ve
     config.csrOff = off.data();
     config.csrAdj = adj.data();
     graph.initializeCuStinger(config);
-    init_algs();
-}
-
-cuStinger_wrapper::cuStinger_wrapper(const DynoGraph::Args &args, int64_t max_vertex_id, const DynoGraph::Batch &batch)
-: DynoGraph::DynamicGraph(args, max_vertex_id)
-{
-    cuStingerInitConfig config;
-    config.initState = eInitStateEmpty;
-    config.maxNV = max_vertex_id + 1;
-    graph.initializeCuStinger(config);
-    // FIXME
-    insert_batch(batch);
-    init_algs();
-}
-
-void
-cuStinger_wrapper::init_algs()
-{
-    bfs.Init(graph);
-    cc.Init(graph);
-    pagerank.Init(graph);
-}
-
-void
-cuStinger_wrapper::free_algs()
-{
-    bfs.Release();
-    cc.Release();
-    pagerank.Release();
 }
 
 cuStinger_wrapper::~cuStinger_wrapper()
 {
     graph.freecuStinger();
-    free_algs();
 }
 
 
-static std::vector<std::string> get_supported_algs() { return {}; };
+// Implementation of cuStingerAlgs_wrapper
+#define DYNOGRAPH_NUM_BC_SOURCES 128
+
+cuStingerAlgs_wrapper::cuStingerAlgs_wrapper(cuStinger& graph)
+// Betweenness Centrality needs # of sources passed in the constructor
+// We know DynoGraph always does 128 Betweenness Centrality traversals, but this isn't stored anywhere
+: bc_values(DYNOGRAPH_NUM_BC_SOURCES), bc(DYNOGRAPH_NUM_BC_SOURCES, bc_values.data())
+{
+    bc.Init(graph);
+    bfs.Init(graph);
+    cc.Init(graph);
+    pagerank.Init(graph);
+}
+
+cuStingerAlgs_wrapper::~cuStingerAlgs_wrapper()
+{
+    bc.Release();
+    bfs.Release();
+    cc.Release();
+    pagerank.Release();
+}
+
+// Implementation of cuStinger_implementation
+
+cuStinger_implementation::cuStinger_implementation(const DynoGraph::Args& args, int64_t max_vertex_id)
+: DynoGraph::DynamicGraph(args, max_vertex_id)
+, graph_wrapper(max_vertex_id + 1)
+, graph(graph_wrapper.graph)
+, algs(graph)
+{
+
+}
+
+cuStinger_implementation::cuStinger_implementation(const DynoGraph::Args &args, int64_t max_vertex_id, const DynoGraph::Batch &batch)
+: DynoGraph::DynamicGraph(args, max_vertex_id)
+, graph_wrapper(max_vertex_id + 1)
+, graph(graph_wrapper.graph)
+, algs(graph)
+{
+    // FIXME
+    insert_batch(batch);
+}
+
+// Implementation of cuStinger_implementation
+
+std::vector<std::string> get_supported_algs() { return {"bc", "bfs", "cc", "pagerank"}; };
+
 void
-cuStinger_wrapper::before_batch(const DynoGraph::Batch& batch, const int64_t threshold)
+cuStinger_implementation::before_batch(const DynoGraph::Batch& batch, const int64_t threshold)
 {}
 
 void
-cuStinger_wrapper::insert_batch(const DynoGraph::Batch & b)
+cuStinger_implementation::insert_batch(const DynoGraph::Batch & b)
 {
     BatchUpdateData bud(b.size(), true);
 
@@ -103,31 +121,36 @@ cuStinger_wrapper::insert_batch(const DynoGraph::Batch & b)
 }
 
 void
-cuStinger_wrapper::delete_edges_older_than(int64_t threshold) {
+cuStinger_implementation::delete_edges_older_than(int64_t threshold) {
     // FIXME
 };
 void
-cuStinger_wrapper::update_alg(const std::string &name, const std::vector<int64_t> &sources, DynoGraph::Range<int64_t> data)
+cuStinger_implementation::update_alg(const std::string &name, const std::vector<int64_t> &sources, DynoGraph::Range<int64_t> data)
 {
-    if (name == "bfs")
+    if (name == "bc")
+    {
+        algs.bc.Reset();
+        algs.bc.Run(graph);
+    }
+    else if (name == "bfs")
     {
         for (auto source : sources)
         {
-            bfs.Reset();
-            bfs.setInputParameters(source);
-            bfs.Run(graph);
+            algs.bfs.Reset();
+            algs.bfs.setInputParameters(source);
+            algs.bfs.Run(graph);
         }
     }
     else if (name == "cc")
     {
-        cc.Reset();
-        cc.Run(graph);
+        algs.cc.Reset();
+        algs.cc.Run(graph);
     }
     else if (name == "pagerank")
     {
-        pagerank.Reset();
-        pagerank.setInputParameters(5, 0.001);
-        pagerank.Run(graph);
+        algs.pagerank.Reset();
+        algs.pagerank.setInputParameters(5, 0.001);
+        algs.pagerank.Run(graph);
     } else {
         DynoGraph::Logger::get_instance() << "Algorithm " << name << " is not implemented\n";
         DynoGraph::die();
@@ -135,14 +158,14 @@ cuStinger_wrapper::update_alg(const std::string &name, const std::vector<int64_t
 }
 
 int64_t
-cuStinger_wrapper::get_out_degree(int64_t vertex_id) const
+cuStinger_implementation::get_out_degree(int64_t vertex_id) const
 {
     // FIXME
     return 0;
 }
 
 int64_t
-cuStinger_wrapper::get_num_vertices() const
+cuStinger_implementation::get_num_vertices() const
 {
     // // FIXME
     // cuStinger &g = const_cast<cuStinger&>(graph);
@@ -151,7 +174,7 @@ cuStinger_wrapper::get_num_vertices() const
 }
 
 int64_t
-cuStinger_wrapper::get_num_edges() const
+cuStinger_implementation::get_num_edges() const
 {
     // cuStinger &g = const_cast<cuStinger&>(graph);
     // return g.getNumberEdgesUsed();
@@ -159,8 +182,11 @@ cuStinger_wrapper::get_num_edges() const
 }
 
 std::vector<int64_t>
-cuStinger_wrapper::get_high_degree_vertices(int64_t n) const
+cuStinger_implementation::get_high_degree_vertices(int64_t n) const
 {
     // FIXME
-    return {};
+    std::vector<int64_t> vertices(n);
+    int64_t i = 1;
+    std::generate(vertices.begin(), vertices.end(), [&i]{ return i; });
+    return vertices;
 }
