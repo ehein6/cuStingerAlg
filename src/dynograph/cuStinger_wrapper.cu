@@ -1,6 +1,19 @@
-#include "cuStinger_wrapper.h"
+#include "cuStinger_wrapper.cuh"
+#include "algs.cuh"
+
+#include "static_breadth_first_search/bfs_top_down.cuh"
+#include "static_breadth_first_search/bfs_bottom_up.cuh"
+#include "static_breadth_first_search/bfs_hybrid.cuh"
+#include "static_connected_components/cc.cuh"
+#include "static_page_rank/pr.cuh"
+#include "static_betweenness_centrality/bc.cuh"
+
+
 
 #include <dynograph_util/args.h>
+#include <dynograph_util/logger.h>
+
+using namespace cuStingerAlgs;
 
 cuStinger_wrapper::cuStinger_wrapper(const DynoGraph::Args& args, int64_t max_vertex_id)
 : DynoGraph::DynamicGraph(args, max_vertex_id)
@@ -27,6 +40,7 @@ cuStinger_wrapper::cuStinger_wrapper(const DynoGraph::Args& args, int64_t max_ve
     config.csrOff = off.data();
     config.csrAdj = adj.data();
     graph.initializeCuStinger(config);
+    init_algs();
 }
 
 cuStinger_wrapper::cuStinger_wrapper(const DynoGraph::Args &args, int64_t max_vertex_id, const DynoGraph::Batch &batch)
@@ -38,11 +52,25 @@ cuStinger_wrapper::cuStinger_wrapper(const DynoGraph::Args &args, int64_t max_ve
     graph.initializeCuStinger(config);
     // FIXME
     insert_batch(batch);
+    init_algs();
+}
+
+void
+cuStinger_wrapper::init_algs()
+{
+    pagerank.Init(graph);
+}
+
+void
+cuStinger_wrapper::free_algs()
+{
+    pagerank.Release();
 }
 
 cuStinger_wrapper::~cuStinger_wrapper()
 {
     graph.freecuStinger();
+    free_algs();
 }
 
 
@@ -77,7 +105,15 @@ cuStinger_wrapper::delete_edges_older_than(int64_t threshold) {
 void
 cuStinger_wrapper::update_alg(const std::string &name, const std::vector<int64_t> &sources, DynoGraph::Range<int64_t> data)
 {
-    // FIXME
+    if (name == "pagerank")
+    {
+        pagerank.Reset();
+        pagerank.setInputParameters(5, 0.001);
+        pagerank.Run(graph);
+    } else {
+        DynoGraph::Logger::get_instance() << "Algorithm " << name << " is not implemented\n";
+        DynoGraph::die();
+    }
 }
 
 int64_t
@@ -90,21 +126,23 @@ cuStinger_wrapper::get_out_degree(int64_t vertex_id) const
 int64_t
 cuStinger_wrapper::get_num_vertices() const
 {
-    // FIXME
-    cuStinger &g = const_cast<cuStinger&>(graph);
-    return g.getMaxNV();
+    // // FIXME
+    // cuStinger &g = const_cast<cuStinger&>(graph);
+    // return g.getMaxNV();
+    return 0;
 }
 
 int64_t
 cuStinger_wrapper::get_num_edges() const
 {
-    cuStinger &g = const_cast<cuStinger&>(graph);
-    return g.getNumberEdgesUsed();
+    // cuStinger &g = const_cast<cuStinger&>(graph);
+    // return g.getNumberEdgesUsed();
+    return 0;
 }
 
 std::vector<int64_t>
 cuStinger_wrapper::get_high_degree_vertices(int64_t n) const
 {
     // FIXME
-    return {0};
+    return {};
 }

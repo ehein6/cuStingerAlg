@@ -114,7 +114,7 @@ INCLUDE_DIRECTORIES(externals/dynograph_util/hooks)
 add_subdirectory(externals/dynograph_util)
 
 cuda_add_executable(dynograph
-  src/dynograph/dynograph.cpp src/dynograph/cuStinger_wrapper.cpp
+  src/dynograph/dynograph.cu src/dynograph/cuStinger_wrapper.cu
 )
 
 TARGET_LINK_LIBRARIES(dynograph

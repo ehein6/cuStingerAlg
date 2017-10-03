@@ -4,14 +4,31 @@
 #include <cuStingerDefs.hpp>
 #include <cuStinger.hpp>
 
+#include "algs.cuh"
+
+#include "static_breadth_first_search/bfs_top_down.cuh"
+#include "static_breadth_first_search/bfs_bottom_up.cuh"
+#include "static_breadth_first_search/bfs_hybrid.cuh"
+#include "static_connected_components/cc.cuh"
+#include "static_page_rank/pr.cuh"
+#include "static_betweenness_centrality/bc.cuh"
+
+#include "static_katz_centrality/katz.cuh"
+
 class cuStinger_wrapper : public DynoGraph::DynamicGraph
 {
 private:
     cuStinger graph;
 
+    // Algorithms
+    cuStingerAlgs::StaticPageRank pagerank;
+
     // Store initial CSR graph
     std::vector<length_t> off;
     std::vector<vertexId_t> adj;
+
+    void init_algs();
+    void free_algs();
 
 public:
     cuStinger_wrapper(const DynoGraph::Args& args, int64_t max_nv);

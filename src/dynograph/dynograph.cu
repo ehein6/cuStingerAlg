@@ -1,5 +1,5 @@
 #include <dynograph_util/benchmark.h>
-#include "cuStinger_wrapper.h"
+#include "cuStinger_wrapper.cuh"
 
 int main(int argc, char** argv)
 {
