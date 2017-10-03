@@ -59,6 +59,7 @@ void
 cuStinger_wrapper::init_algs()
 {
     bfs.Init(graph);
+    cc.Init(graph);
     pagerank.Init(graph);
 }
 
@@ -66,6 +67,7 @@ void
 cuStinger_wrapper::free_algs()
 {
     bfs.Release();
+    cc.Release();
     pagerank.Release();
 }
 
@@ -115,6 +117,11 @@ cuStinger_wrapper::update_alg(const std::string &name, const std::vector<int64_t
             bfs.setInputParameters(source);
             bfs.Run(graph);
         }
+    }
+    else if (name == "cc")
+    {
+        cc.Reset();
+        cc.Run(graph);
     }
     else if (name == "pagerank")
     {
