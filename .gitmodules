@@ -7,3 +7,6 @@
 [submodule "externals/moderngpu"]
 	path = externals/moderngpu
 	url = https://github.com/moderngpu/moderngpu.git
+[submodule "externals/dynograph_util"]
+	path = externals/dynograph_util
+	url = git@github.com:DynoGraph/dynograph_util.git
