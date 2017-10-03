@@ -21,6 +21,7 @@ private:
     cuStinger graph;
 
     // Algorithms
+    cuStingerAlgs::bfsBU bfs;
     cuStingerAlgs::StaticPageRank pagerank;
 
     // Store initial CSR graph

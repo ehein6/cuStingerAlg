@@ -58,12 +58,14 @@ cuStinger_wrapper::cuStinger_wrapper(const DynoGraph::Args &args, int64_t max_ve
 void
 cuStinger_wrapper::init_algs()
 {
+    bfs.Init(graph);
     pagerank.Init(graph);
 }
 
 void
 cuStinger_wrapper::free_algs()
 {
+    bfs.Release();
     pagerank.Release();
 }
 
@@ -105,7 +107,16 @@ cuStinger_wrapper::delete_edges_older_than(int64_t threshold) {
 void
 cuStinger_wrapper::update_alg(const std::string &name, const std::vector<int64_t> &sources, DynoGraph::Range<int64_t> data)
 {
-    if (name == "pagerank")
+    if (name == "bfs")
+    {
+        for (auto source : sources)
+        {
+            bfs.Reset();
+            bfs.setInputParameters(source);
+            bfs.Run(graph);
+        }
+    }
+    else if (name == "pagerank")
     {
         pagerank.Reset();
         pagerank.setInputParameters(5, 0.001);
