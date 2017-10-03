@@ -107,3 +107,16 @@ TARGET_LINK_LIBRARIES(cuAlgStCCT custingerAlgs custinger  ${CUDA_LIBRARIES})
 TARGET_LINK_LIBRARIES(cus-alg-tester custingerAlgs custinger ${CUDA_LIBRARIES})
 
 #TARGET_LINK_LIBRARIES(katz-tester custingerAlgs custinger ${CUDA_LIBRARIES})
+
+# Build DynoGraph benchmark
+INCLUDE_DIRECTORIES(externals)
+INCLUDE_DIRECTORIES(externals/dynograph_util/hooks)
+add_subdirectory(externals/dynograph_util)
+
+cuda_add_executable(dynograph
+  src/dynograph/dynograph.cpp src/dynograph/cuStinger_wrapper.cpp
+)
+
+TARGET_LINK_LIBRARIES(dynograph
+  dynograph_util hooks custingerAlgs custinger ${CUDA_LIBRARIES}
+)
